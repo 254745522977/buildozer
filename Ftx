@@ -1,0 +1,107 @@
+from kivy.app import App
+from kivy.uix.widget import Widget
+from kivy.clock import Clock
+from kivy.graphics import Color, Rectangle
+from kivy.core.window import Window
+from kivy.uix.label import Label
+
+Window.size = (800, 600)  # This will be scaled on Android
+
+class DinoGame(Widget):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.score = 0
+        self.game_over = False
+
+        # Dino properties
+        self.dino_x = 50
+        self.dino_y = 400
+        self.dino_width = 60
+        self.dino_height = 80
+        self.dino_y_velocity = 0
+        self.dino_gravity = 1
+
+        # Cactus properties
+        self.cactus_x = 800
+        self.cactus_y = 420
+        self.cactus_width = 40
+        self.cactus_height = 60
+        self.cactus_speed = 5
+
+        # Bind touch for jumping
+        Window.bind(on_touch_down=self.jump)
+
+        Clock.schedule_interval(self.update, 1/60)
+
+    def jump(self, *args):
+        if not self.game_over and self.dino_y == 400:
+            self.dino_y_velocity = -20
+
+    def update(self, dt):
+        if self.game_over:
+            return
+
+        # Dino jump physics
+        self.dino_y_velocity += self.dino_gravity
+        self.dino_y += self.dino_y_velocity
+        if self.dino_y > 400:
+            self.dino_y = 400
+            self.dino_y_velocity = 0
+
+        # Move cactus
+        self.cactus_x -= self.cactus_speed
+        if self.cactus_x < -40:
+            self.cactus_x = 800
+            self.score += 1
+
+        # Collision detection
+        if (self.dino_x + self.dino_width > self.cactus_x and
+            self.dino_x < self.cactus_x + self.cactus_width and
+            self.dino_y + self.dino_height > self.cactus_y):
+            self.game_over = True
+
+        self.draw()
+
+    def draw(self):
+        self.canvas.clear()
+        with self.canvas:
+            Color(1, 1, 1)  # White background
+            Rectangle(pos=(0, 0), size=Window.size)
+
+            # Draw dino
+            Color(0, 0, 0)  # Black
+            Rectangle(pos=(self.dino_x, self.dino_y),
+                      size=(self.dino_width, self.dino_height))
+
+            # Draw cactus
+            Rectangle(pos=(self.cactus_x, self.cactus_y),
+                      size=(self.cactus_width, self.cactus_height))
+
+            # Draw score
+            self.add_widget(Label(text=f"Score: {self.score}",
+                                  pos=(0, 250), color=(0, 0, 0, 1)))
+
+            # Game Over screen
+            if self.game_over:
+                self.add_widget(Label(text="GAME OVER\nTap to Restart",
+                                      pos=(0, 0), font_size=32,
+                                      color=(1, 0, 0, 1)))
+                Window.bind(on_touch_down=self.restart)
+
+    def restart(self, *args):
+        self.clear_widgets()
+        self.score = 0
+        self.dino_y = 400
+        self.dino_y_velocity = 0
+        self.cactus_x = 800
+        self.game_over = False
+        Window.unbind(on_touch_down=self.restart)
+
+
+class DinoApp(App):
+    def build(self):
+        return DinoGame()
+
+
+if __name__ == "__main__":
+    DinoApp().run()
